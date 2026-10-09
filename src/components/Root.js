@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, supabaseConfigured } from '../lib/supabase.js';
-import { AuthScreen, RecoveryScreen, SetupScreen } from './AuthScreens.js';
+import { AuthScreen, PasscodeScreen, OWNER_EMAIL, RecoveryScreen, SetupScreen } from './AuthScreens.js';
 import { App } from '../App.js';
 
 const h = React.createElement;
@@ -33,6 +33,6 @@ export function Root() {
   if (status === 'setup') return h(SetupScreen);
   if (status === 'loading') return h(Splash, { text: 'Opening Monies…' });
   if (status === 'recovery') return h(RecoveryScreen, { onDone: () => setStatus('in') });
-  if (status === 'out' || !session) return h(AuthScreen);
+  if (status === 'out' || !session) return OWNER_EMAIL ? h(PasscodeScreen) : h(AuthScreen);
   return h(App, { key: session.user.id, user: session.user, onSignOut: () => supabase.auth.signOut() });
 }

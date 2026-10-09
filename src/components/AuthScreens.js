@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase.js';
 
 const h = React.createElement;
 export const MIN_PASSWORD = 10;
+// Optional: if set, the app shows a single passcode box and signs in to this one account.
+export const OWNER_EMAIL = (import.meta.env.VITE_OWNER_EMAIL || '').trim();
 
 export function friendlyAuth(e) {
   const m = String((e && e.message) || e || '');
@@ -91,6 +93,37 @@ export function AuthScreen() {
     h('div', { className: 'auth-links' },
       mode === 'signin' ? h('button', { className: 'link-btn', onClick: () => go('forgot') }, 'Forgot password?') : null,
       mode === 'signin' ? h('button', { className: 'link-btn', onClick: () => go('signup') }, 'Create an account') : h('button', { className: 'link-btn', onClick: () => go('signin') }, 'Back to sign in')));
+}
+
+/** One-box login: the passcode is the password of the single account you created in Supabase. */
+export function PasscodeScreen() {
+  const [code, setCode] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function submit(e) {
+    e.preventDefault();
+    setErr('');
+    if (!code) return setErr('Enter your passcode.');
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: OWNER_EMAIL, password: code });
+      if (error) throw error;
+    } catch (ex) {
+      const m = String((ex && ex.message) || '');
+      setErr(/invalid login credentials/i.test(m) ? 'That passcode is not right.' : friendlyAuth(ex));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const toggle = h('button', { type: 'button', className: 'btn btn-ghost btn-sm', style: { position: 'absolute', right: 6, top: 5 }, onClick: () => setShow((s) => !s), 'aria-pressed': show }, show ? 'Hide' : 'Show');
+  return h(Shell, { title: 'Welcome back', subtitle: 'Enter your passcode to open your orchard.' },
+    h('form', { onSubmit: submit, className: 'stack stack-md', noValidate: true },
+      h(Field, { id: 'passcode', label: 'Passcode', type: show ? 'text' : 'password', value: code, onChange: setCode, autoComplete: 'current-password', right: toggle }),
+      err ? h('div', { className: 'alert alert-danger', role: 'alert' }, err) : null,
+      h('button', { type: 'submit', className: 'btn btn-primary', disabled: busy, style: { justifyContent: 'center' } }, busy ? 'Please wait…' : 'Open')));
 }
 
 /** Shown after you open the reset link from your email. */
