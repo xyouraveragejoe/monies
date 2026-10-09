@@ -1,8 +1,13 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {ModalRouter} from './components/Modals.js';
 import {D_AI, D_ASSETS, D_DEBTS, D_EXPENSES, D_GOALS, D_INCOME, D_LIFESTYLE, D_PREDICTOR, D_PROFILE, D_RETIREMENT, D_SCENARIOS} from './lib/defaults.js';
-import {FX, FX_FALLBACK, setCurrency} from './lib/format.js';
+import {FX, FX_FALLBACK, setCurrency, uid} from './lib/format.js';
 import {storageGet, storageSet} from './lib/storage.js';
+import {supabase} from './lib/supabase.js';
+import {loadAll, replaceAll, validateKey, mortgageHasData, friendlyMessage} from './lib/db.js';
+import {createSync} from './lib/sync.js';
+import {exampleState, blankState, legacyState, hasLegacyData, archiveLegacyData} from './lib/seed.js';
+import {Welcome} from './components/Welcome.js';
 import {PageAI} from './pages/AI.js';
 import {PageAssets} from './pages/Assets.js';
 import {PageDashboard} from './pages/Dashboard.js';
@@ -27,7 +32,10 @@ export const NAV=[
 
 /* ── Main App ── */
 
-export function App(){
+/* Your Claude API key and AI chat stay in THIS browser only. They are never sent to the database. */
+const AI_KEY='monies_ai_local_v1';
+
+export function App({user,onSignOut}){
   const[page,setPage]=useState('dashboard');
   const[sideCollapsed,setSideCollapsed]=useState(false);
   const[darkMode,setDarkMode]=useState(()=>{try{return window.matchMedia('(prefers-color-scheme: dark)').matches}catch{return false}});
@@ -35,8 +43,12 @@ export function App(){
   const[,setFxTick]=useState(0);
   const[loaded,setLoaded]=useState(false);
   const[modal,setModal]=useState(null);// {type,data}
-  const[saving,setSaving]=useState(false);
-  const saveTimer=useRef(null);
+  const[needsWelcome,setNeedsWelcome]=useState(false);
+  const[loadError,setLoadError]=useState('');
+  const[reloadKey,setReloadKey]=useState(0);
+  const[saveStatus,setSaveStatus]=useState({state:'idle'});
+  const[notice,setNotice]=useState('');
+  const[signOutArmed,setSignOutArmed]=useState(false);
 
   const[state,setState]=useState({
     profile:D_PROFILE,income:D_INCOME,expenses:D_EXPENSES,
@@ -44,29 +56,72 @@ export function App(){
     retirement:{...D_RETIREMENT},predictor:{...D_PREDICTOR},
     goals:[...D_GOALS],scenarios:[...D_SCENARIOS],ai:{...D_AI},lifestyle:{...D_LIFESTYLE}
   });
+  const stateRef=useRef(state);
+  const syncRef=useRef(null);
+  if(!syncRef.current)syncRef.current=createSync(supabase,setSaveStatus);
 
+  // Load your data from Supabase when you sign in (and again if you press Retry).
   useEffect(()=>{
+    let dead=false;
+    setLoadError('');
     (async()=>{
-      const s=await storageGet('flp_state_v3',null);
-      if(s)setState(s);
-      setLoaded(true);
+      try{
+        const {empty,state:remote}=await loadAll(supabase);
+        const ai=await storageGet(AI_KEY,null);
+        if(dead)return;
+        stateRef.current={...stateRef.current,...remote,ai:{...D_AI,...(ai||{})}};
+        setState(stateRef.current);
+        setNeedsWelcome(empty);
+        setLoaded(true);
+      }catch(e){
+        if(!dead)setLoadError(friendlyMessage(e));
+      }
     })();
+    return()=>{dead=true};
+  },[user.id,reloadKey]);
+
+  // Warn before closing the tab if something has not been saved yet.
+  useEffect(()=>{
+    const warn=(e)=>{if(syncRef.current.pending()){e.preventDefault();e.returnValue='';}};
+    window.addEventListener('beforeunload',warn);
+    return()=>window.removeEventListener('beforeunload',warn);
   },[]);
 
-  const save=useCallback((ns)=>{
-    setSaving(true);
-    clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(async()=>{
-      await storageSet('flp_state_v3',ns);
-      setSaving(false);
-    },800);
-  },[]);
+  // First sign-in: pick how the account starts, then write it to the database.
+  const startWith=async(kind)=>{
+    let base,ai=null;
+    if(kind==='legacy'){const r=legacyState();base=r.state;ai=r.ai;}
+    else base=kind==='example'?exampleState():blankState();
+    await replaceAll(supabase,base);
+    if(kind==='legacy'){archiveLegacyData();if(ai)await storageSet(AI_KEY,ai);}
+    stateRef.current={...stateRef.current,...base,...(ai?{ai:{...D_AI,...ai}}:{})};
+    setState(stateRef.current);
+    setNeedsWelcome(false);
+  };
 
-  const upd=(key,val)=>setState(prev=>{
-    const ns={...prev,[key]:val};
-    save(ns);
-    return ns;
-  });
+  // Every edit goes through here: validate, update the screen, then save in the background.
+  const upd=(key,val)=>{
+    if(key==='ai'){
+      stateRef.current={...stateRef.current,ai:val};
+      setState(stateRef.current);
+      storageSet(AI_KEY,val);
+      return;
+    }
+    const err=validateKey(key,val);
+    if(err){setNotice(`Not saved: ${err}`);return;}
+    let next=val;
+    if(key==='debts'&&!next.mortgage.id&&mortgageHasData(next.mortgage))next={...next,mortgage:{...next.mortgage,id:uid()}};
+    const prev=stateRef.current[key];
+    setNotice('');
+    stateRef.current={...stateRef.current,[key]:next};
+    setState(stateRef.current);
+    syncRef.current.enqueue(key,prev,next);
+  };
+
+  const trySignOut=()=>{
+    if(syncRef.current.pending()&&!signOutArmed){setSignOutArmed(true);return;}
+    onSignOut();
+  };
 
   const updPath=(key,sub,val)=>upd(key,{...state[key],[sub]:val});
 
@@ -120,10 +175,20 @@ export function App(){
 
   const derived={totalIncome,totalExpenses,monthlySurplus,savingsRate,totalAssets,totalDebt,netWorth,cashAssets,investAssets,debtRatio,burnRate,healthScore,totalCCDebt,totalLoanDebt,totalMortgage};
 
+  if(loadError)return React.createElement('div',{className:'auth-wrap'},
+    React.createElement('div',{className:'auth-card'},
+      React.createElement('h1',{className:'auth-title'},'Could not load your data'),
+      React.createElement('div',{className:'alert alert-danger',role:'alert'},loadError),
+      React.createElement('div',{className:'row gap-sm',style:{marginTop:16}},
+        React.createElement('button',{className:'btn btn-primary',onClick:()=>setReloadKey(k=>k+1)},'Try again'),
+        React.createElement('button',{className:'btn btn-ghost',onClick:onSignOut},'Sign out'))));
+
   if(!loaded)return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--fg2)',gap:12}},
     React.createElement('div',{style:{width:20,height:20,border:'2px solid var(--border)',borderTopColor:'var(--accent)',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}),
     'Loading your data...'
   );
+
+  if(needsWelcome)return React.createElement(Welcome,{email:user.email,hasLegacy:hasLegacyData(),onChoose:startWith});
 
   const currentNav=NAV.flatMap(g=>g.items).find(i=>i.id===page);
 
@@ -162,14 +227,22 @@ export function App(){
           React.createElement('div',{className:'page-title'},currentNav?.label||'Monies')
         ),
         React.createElement('div',{className:'topbar-actions'},
-          saving&&React.createElement('span',{style:{fontSize:11,color:'var(--fg3)'}},saving?'Saving...':''),
+          React.createElement('span',{className:`save-status ${saveStatus.state}`,role:'status','aria-live':'polite'},
+            saveStatus.state==='saving'?'Saving…':saveStatus.state==='error'?'Not saved':'Saved to your account'),
           React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setDarkMode(p=>!p)},darkMode?'☀ Light':'☾ Dark'),
-          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:7}},
+          React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:trySignOut,title:user.email,onBlur:()=>setSignOutArmed(false)},signOutArmed?'Unsaved changes. Sign out anyway?':'Sign out'),
+          React.createElement('div',{className:'health-pill',style:{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:7}},
             React.createElement('span',{style:{fontSize:11,color:'var(--fg3)'}},healthScore>=80?'🟢':healthScore>=50?'🟡':'🔴'),
             React.createElement('span',{style:{fontSize:12,fontWeight:600}},`${healthScore}/100`)
           )
         )
       ),
+      saveStatus.state==='error'&&React.createElement('div',{className:'banner banner-error',role:'alert'},
+        React.createElement('span',null,`Your latest changes are NOT saved yet. ${saveStatus.message||''}`),
+        React.createElement('button',{className:'btn btn-sm btn-primary',onClick:()=>syncRef.current.retry(()=>stateRef.current)},'Retry saving')),
+      notice&&React.createElement('div',{className:'banner banner-warn',role:'alert'},
+        React.createElement('span',null,notice),
+        React.createElement('button',{className:'btn btn-sm btn-ghost',onClick:()=>setNotice('')},'Dismiss')),
       React.createElement('div',{className:'page-content'},
         page==='dashboard'&&React.createElement(PageDashboard,{state,derived,setPage,upd}),
         page==='snapshot'&&React.createElement(PageSnapshot,{state,upd,updPath,derived}),

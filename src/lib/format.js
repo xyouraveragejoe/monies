@@ -2,7 +2,12 @@
 
 /* ── helpers ── */
 
-export const uid=()=>Math.random().toString(36).slice(2,9);
+export const uid=()=>{
+  if(globalThis.crypto&&crypto.randomUUID)return crypto.randomUUID();
+  const h=[...Array(32)].map(()=>Math.floor(Math.random()*16).toString(16));
+  h[12]='4';h[16]='89ab'[Math.floor(Math.random()*4)];
+  return `${h.slice(0,8).join('')}-${h.slice(8,12).join('')}-${h.slice(12,16).join('')}-${h.slice(16,20).join('')}-${h.slice(20).join('')}`;
+};
 
 export const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
 
