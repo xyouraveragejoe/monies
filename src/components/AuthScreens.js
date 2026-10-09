@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase.js';
+import { supabase, configProblem } from '../lib/supabase.js';
 
 const h = React.createElement;
 export const MIN_PASSWORD = 10;
@@ -162,6 +162,7 @@ export function RecoveryScreen({ onDone }) {
 export function SetupScreen() {
   return h(Shell, { title: 'One setup step left', subtitle: 'This app needs your Supabase project details before it can store anything.' },
     h('div', { className: 'stack stack-sm' },
+      configProblem ? h('div', { className: 'alert alert-danger', role: 'alert' }, configProblem) : null,
       h('p', null, 'Add these two environment variables, then redeploy (Vercel) or restart the dev server (local):'),
       h('pre', { className: 'auth-code' }, 'VITE_SUPABASE_URL\nVITE_SUPABASE_PUBLISHABLE_KEY'),
       h('p', { className: 'note' }, 'Vercel: Project > Settings > Environment Variables. Local: copy .env.example to .env.local. Use the publishable key only, never a secret or service_role key.')));
