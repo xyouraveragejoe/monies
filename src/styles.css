@@ -196,7 +196,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
 
 /* ---- Sign-in, first-run and save status (Stage 2) ---- */
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg)}
+.auth-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg)}
 .auth-card{width:100%;max-width:420px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:14px}
 .auth-brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--fg)}
 .auth-title{font-family:var(--font-display);font-size:20px;font-weight:700;margin:0;color:var(--fg)}
@@ -214,3 +214,50 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;border:1px solid var(--border)}
 .banner-error{background:rgba(179,69,47,0.1);border-color:var(--red);color:var(--red)}
 .banner-warn{background:var(--honey-soft);border-color:var(--honey);color:var(--fg)}
+
+/* ---- Phone friendliness ---- */
+html,body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
+.btn,.nav-item,.sidebar-toggle{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.sec-header{flex-wrap:wrap;gap:8px}
+.row-between{gap:8px}
+img,svg,canvas{max-width:100%}
+.main{min-width:0}
+@media(max-width:768px){
+  /* iOS zooms the page when you tap a field smaller than 16px, so keep fields at 16px */
+  .input,select.input,textarea.input{font-size:16px;padding:11px 12px;min-height:44px}
+  .input-prefix .input{padding-left:28px}
+  /* finger-sized buttons and menu rows */
+  .btn{min-height:40px;padding:9px 14px}
+  .btn-sm{min-height:36px;padding:7px 12px}
+  .menu-btn{min-width:44px;min-height:44px;justify-content:center;font-size:18px}
+  .nav-item{padding:13px 18px;font-size:15px}
+  .sidebar{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);width:min(var(--nav-w),84vw)}
+  /* top bar: title on the first line, status and buttons wrap onto the next */
+  .topbar{flex-wrap:wrap;gap:8px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+  .page-title{font-size:17px}
+  .topbar-actions{width:100%;flex-wrap:wrap;gap:8px}
+  .topbar-actions .btn{flex:0 1 auto;white-space:normal;text-align:left}
+  .save-status{white-space:normal}
+  .health-pill{margin-left:auto}
+  .page-content{padding:16px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+  .card,.card-glass{padding:16px}
+  .kpi-value{font-size:22px}
+  /* wide tables slide sideways inside themselves instead of stretching the page */
+  .tbl{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  /* pop-ups fill the screen width and scroll inside */
+  .modal-overlay{padding:12px;align-items:flex-end}
+  .modal{margin:0;max-width:none;max-height:calc(100dvh - 24px);border-radius:14px}
+  .modal-body{padding:16px}
+  .modal-footer{position:sticky;bottom:0;background:var(--bg2);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .modal-footer .btn{flex:1;justify-content:center}
+  /* AI chat fits the visible screen even with the phone's address bar */
+  .chat-wrap{height:calc(100dvh - 190px);min-height:320px}
+  .chat-bubble{max-width:90%}
+  .chat-input-row{padding:12px}
+  .auth-card{padding:22px}
+  .banner .btn{flex:1 1 auto;justify-content:center}
+}
+@media(max-width:380px){
+  .page-content{padding:12px}
+  .hero-big{font-size:32px}
+}
