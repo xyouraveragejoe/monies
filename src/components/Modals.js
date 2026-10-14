@@ -181,7 +181,7 @@ export function ScenarioModal({modal,close,state,upd}){
         ),
         React.createElement('div',{className:'grid2'},
           React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Prep Years Needed'),React.createElement(NumInput,{value:d.prepYears,min:0,max:30,onChange:v=>setD({...d,prepYears:v}),style:{width:'100%'}})),
-          React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Risk Level'),React.createElement('select',{className:'input',value:d.risk,onChange:e=>setD({...d,risk:e.target.value})},['low','medium','high'].map(r=>React.createElement('option',{key:r,value:r},r.charAt(0).toUpperCase()+r.slice(1)))))
+          React.createElement('div',{className:'note',style:{alignSelf:'end'}},'Risk is worked out for you from your income, savings and debts.')
         ),
         React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Notes'),React.createElement('textarea',{className:'input',value:d.note,onChange:e=>setD({...d,note:e.target.value})}))
       ),
