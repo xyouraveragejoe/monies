@@ -28,52 +28,70 @@ export const upfrontCash = (s) => Math.max(0, (s.cost || 0) - (s.loanAmount || 0
 /**
  * Judge one plan (a list of scenarios done together).
  * ctx = { income, expenses, surplus, liquid, existingDebtPayments, age, retireAge, returnRate, investable, monthlyContrib }
+ *
+ * Income changes (for example quitting a job to start a business):
+ *   incomeChange        monthly change in your income during the start-up period (negative = you lose pay)
+ *   incomeChangeMonths  how long that start-up period lasts (0 = no start-up period)
+ *   incomeAfter         monthly change in your income once the start-up period is over (compared with today)
  */
 export function assessPlan(items, ctx, rules = RULES) {
+  const num = (v) => (Number.isFinite(v) ? v : 0);
   const upfront = items.reduce((a, s) => a + upfrontCash(s), 0);
-  const newMonthly = items.reduce((a, s) => a + loanPayment(s) + (s.monthlyExtra || 0), 0);
   const loanMonthly = items.reduce((a, s) => a + loanPayment(s), 0);
+  const newMonthly = items.reduce((a, s) => a + loanPayment(s) + num(s.monthlyExtra), 0);
+  const launchMonths = Math.max(0, ...items.map((s) => num(s.incomeChangeMonths)));
+  const launchIncome = items.reduce((a, s) => a + (num(s.incomeChangeMonths) > 0 ? num(s.incomeChange) : 0), 0);
+  const incomeAfter = items.reduce((a, s) => a + num(s.incomeAfter), 0);
   const income = Math.max(ctx.income, 0);
+  const incomeLater = Math.max(income + incomeAfter, 0);
   const spendAfter = ctx.expenses + newMonthly;
+
+  // During the start-up period you may be short each month; that gap must come from savings.
+  const launchMonthlyGap = Math.max(0, -(ctx.surplus + launchIncome - newMonthly));
+  const launchReserve = launchMonthlyGap * launchMonths;
   const checks = [];
 
   // 1. Cash cover
-  const liquidAfter = ctx.liquid - upfront;
+  const liquidAfter = ctx.liquid - upfront - launchReserve;
   const monthsCover = spendAfter > 0 ? liquidAfter / spendAfter : (liquidAfter >= 0 ? Infinity : -Infinity);
   const cashLevel = liquidAfter < 0 ? 'red' : monthsCover >= rules.bufferMonths ? 'green' : monthsCover >= rules.bufferAmberMonths ? 'amber' : 'red';
+  const launchNote = launchReserve > 0 ? ` This includes ${fmt(launchReserve)} to live on during the ${launchMonths}-month start-up while your income is lower.` : '';
   checks.push({
-    id: 'cash', title: 'Cash cover', level: cashLevel, value: monthsCover, upfront, liquidAfter,
+    id: 'cash', title: 'Cash cover', level: cashLevel, value: monthsCover, upfront, launchReserve, liquidAfter,
     detail: liquidAfter < 0
-      ? 'You do not have enough savings to pay the upfront amount.'
-      : `After paying the upfront amount, your savings would cover ${Number.isFinite(monthsCover) ? monthsCover.toFixed(1) : 'many'} months of spending (aim for ${rules.bufferMonths}).`,
+      ? `You do not have enough savings to pay the upfront amount${launchReserve > 0 ? ' and cover the start-up months' : ''}.${launchNote}`
+      : `After the upfront amount${launchReserve > 0 ? ' and the start-up months' : ''}, your savings would cover ${Number.isFinite(monthsCover) ? monthsCover.toFixed(1) : 'many'} months of spending (aim for ${rules.bufferMonths}).${launchNote}`,
   });
 
-  // 2. Monthly squeeze
-  const surplusAfter = ctx.surplus - newMonthly;
-  const freeShare = income > 0 ? surplusAfter / income : (surplusAfter >= 0 ? 1 : -1);
+  // 2. Monthly squeeze (once any start-up period is over)
+  const surplusAfter = ctx.surplus + incomeAfter - newMonthly;
+  const freeShare = incomeLater > 0 ? surplusAfter / incomeLater : (surplusAfter >= 0 ? 1 : -1);
   const squeezeLevel = surplusAfter < 0 ? 'red' : freeShare >= rules.keepFreeShare ? 'green' : 'amber';
   checks.push({
     id: 'squeeze', title: 'Monthly squeeze', level: squeezeLevel, value: freeShare, surplusAfter, newMonthly,
     detail: surplusAfter < 0
-      ? 'Your monthly spending would be higher than your income.'
-      : `After the new monthly cost you would still have ${(freeShare * 100).toFixed(0)}% of your income free (aim for ${(rules.keepFreeShare * 100).toFixed(0)}% or more).`,
+      ? 'Once everything is running, your monthly spending would be higher than your income.'
+      : `Once everything is running you would still have ${(freeShare * 100).toFixed(0)}% of your income free (aim for ${(rules.keepFreeShare * 100).toFixed(0)}% or more).`,
   });
 
   // 3. Debt load
-  const debtShare = income > 0 ? (ctx.existingDebtPayments + loanMonthly) / income : (loanMonthly > 0 ? 1 : 0);
+  const debtShare = incomeLater > 0 ? (ctx.existingDebtPayments + loanMonthly) / incomeLater : (loanMonthly > 0 ? 1 : 0);
   const debtLevel = debtShare >= rules.debtShareRed ? 'red' : debtShare >= rules.debtShareAmber ? 'amber' : 'green';
   checks.push({
     id: 'debt', title: 'Debt load', level: debtLevel, value: debtShare,
     detail: `Debt repayments would take ${(debtShare * 100).toFixed(0)}% of your income (banks start to worry above ${(rules.debtShareRed * 100).toFixed(0)}%).`,
   });
 
-  // 4. Retirement impact (an estimate: the upfront money and the new monthly cost no longer get invested)
+  // 4. Retirement impact (an estimate: money spent now and the monthly shortfall no longer get invested)
   const years = Math.max(0, ctx.retireAge - ctx.age);
   const r = (ctx.returnRate || 0) / 100 / 12;
   const n = years * 12;
   const pot = fv(r, n, ctx.monthlyContrib || 0, ctx.investable || 0);
   const costYears = Math.min(years, Math.max(...items.map((s) => (s.loanTenure > 0 ? s.loanTenure / 12 : years)), 0));
-  const lost = upfront * Math.pow(1 + r, n) + fv(r, Math.min(n, Math.round(costYears * 12)), Math.max(newMonthly, 0), 0) * Math.pow(1 + r, Math.max(0, n - Math.round(costYears * 12)));
+  const costMonths = Math.min(n, Math.round(costYears * 12));
+  const netMonthly = Math.max(newMonthly - incomeAfter, 0);
+  const lost = (upfront + launchReserve) * Math.pow(1 + r, n)
+    + fv(r, costMonths, netMonthly, 0) * Math.pow(1 + r, Math.max(0, n - costMonths));
   const impact = pot > 0 ? lost / pot : (lost > 0 ? 1 : 0);
   const retireLevel = impact >= rules.retireImpactRed ? 'red' : impact >= rules.retireImpactAmber ? 'amber' : 'green';
   checks.push({
@@ -90,10 +108,10 @@ export function assessPlan(items, ctx, rules = RULES) {
   // Verdict
   const monthlyBlocked = squeezeLevel === 'red' || debtLevel === 'red';
   const maxMonthly = Math.min(
-    ctx.surplus - rules.keepFreeShare * income,
-    rules.debtShareRed * income - ctx.existingDebtPayments + (newMonthly - loanMonthly) // extra costs are not debt repayments
+    ctx.surplus + incomeAfter - rules.keepFreeShare * incomeLater,
+    rules.debtShareRed * incomeLater - ctx.existingDebtPayments + (newMonthly - loanMonthly) // extra costs are not debt repayments
   );
-  const cashNeeded = upfront + rules.bufferMonths * spendAfter;
+  const cashNeeded = upfront + launchReserve + rules.bufferMonths * spendAfter;
   const cashGap = Math.max(0, cashNeeded - ctx.liquid);
   const saveMonths = cashGap === 0 ? 0 : ctx.surplus > 0 ? Math.ceil(cashGap / ctx.surplus) : Infinity;
   let verdict, message;
@@ -121,7 +139,7 @@ export function assessPlan(items, ctx, rules = RULES) {
       : 'You can do this now. All four checks pass.';
   }
 
-  return { checks, overall, risk, reasons, verdict, message, upfront, newMonthly, loanMonthly, surplusAfter, cashGap, saveMonths: Number.isFinite(saveMonths) ? saveMonths : null, maxMonthly };
+  return { checks, overall, risk, reasons, verdict, message, upfront, newMonthly, loanMonthly, launchReserve, launchMonths, surplusAfter, cashGap, saveMonths: Number.isFinite(saveMonths) ? saveMonths : null, maxMonthly };
 }
 
 /** Build the numbers the engine needs from the app's saved state. */

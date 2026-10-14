@@ -54,4 +54,26 @@ ok(['park', 'restructure'].includes(a.verdict), 'zero income handled');
 // Retiring now
 a = assessPlan([{ ...base, cost: 1000 }], { ...ctx, age: 60 });
 ok(a.checks.find((c) => c.id === 'retire').level !== undefined, 'age = retirement age handled');
+// ---- Business without a loan: lose salary for 12 months, then earn part of it back ----
+const biz = { ...base, cost: 50000, monthlyExtra: 800, incomeChange: -5000, incomeChangeMonths: 12, incomeAfter: -1500 };
+a = assessPlan([biz], { ...ctx, liquid: 200000, surplus: 2000 });
+// launch gap per month = 5000 + 800 - 2000 = 3800, for 12 months = 45600
+ok(Math.abs(a.launchReserve - 45600) < 1e-6 && a.launchMonths === 12, 'business: start-up months need savings (3800 x 12)');
+ok(a.checks.find((c) => c.id === 'cash').liquidAfter === 200000 - 50000 - 45600, 'business: savings left after upfront and start-up months');
+// steady state: surplus 2000 - 800 - 1500 = -300 -> squeeze red
+ok(a.checks.find((c) => c.id === 'squeeze').level === 'red', 'business that never covers its own costs -> squeeze red');
+// Rich enough and the business pays back: all good
+const goodBiz = { ...biz, incomeAfter: 800 };
+a = assessPlan([goodBiz], { ...ctx, liquid: 400000 });
+ok(a.checks.find((c) => c.id === 'squeeze').level !== 'red' && a.checks.find((c) => c.id === 'cash').level === 'green', 'business with enough savings and positive income afterwards passes squeeze and cash');
+// Not enough savings for the start-up months -> save first, including start-up months in the gap
+a = assessPlan([goodBiz], { ...ctx, liquid: 60000 });
+ok(a.verdict === 'save' && a.cashGap > 45600 - 10000, 'business: savings gap includes the start-up months');
+// A pay rise (no start-up period) improves the monthly check
+const raise = { ...base, cost: 0, incomeAfter: 500 };
+a = assessPlan([raise], ctx);
+ok(a.surplusAfter === ctx.surplus + 500, 'income after with no start-up period applies straight away');
+// Old scenarios without the new fields still work
+a = assessPlan([{ ...base, cost: 5000 }], ctx);
+ok(a.launchReserve === 0, 'scenarios without income fields behave as before');
 console.log(fails ? `\n${fails} FAILED` : '\nALL RISK CHECKS PASSED');

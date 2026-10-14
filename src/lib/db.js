@@ -72,6 +72,8 @@ const scenarioErr = (s) => !s || !isId(s.id) ? 'Internal error: scenario has no 
   : !isNum(s.loanRate, 0, 100) ? 'Loan rate must be between 0 and 100.'
   : !isNum(s.loanTenure, 0, 1200, true) ? 'Loan tenure must be a whole number of months from 0 to 1200.'
   : !isNum(s.monthlyExtra, -MAX, MAX) ? 'Extra monthly cost must be a number.'
+  : !isNum(s.incomeChange ?? 0, -MAX, MAX) || !isNum(s.incomeAfter ?? 0, -MAX, MAX) ? 'Income changes must be numbers.'
+  : !isNum(s.incomeChangeMonths ?? 0, 0, 600, true) ? 'Start-up months must be a whole number from 0 to 600.'
   : !isNum(s.prepYears, 0, 100) ? 'Prep years must be between 0 and 100.'
   : !RISKS.includes(s.risk) ? 'Pick a risk level.'
   : !isStr(s.note ?? '', 1000) ? 'Note is too long (1000 characters max).' : null;
@@ -119,8 +121,8 @@ export const MAPS = {
   },
   scenarios: {
     table: 'scenarios',
-    toRow: (s) => ({ id: s.id, name: s.name.trim(), icon: s.icon || '', enabled: !!s.enabled, category: s.category || 'other', cost: s.cost, down_payment: s.downPayment, loan_amount: s.loanAmount, loan_rate: s.loanRate, loan_tenure: s.loanTenure, monthly_extra: s.monthlyExtra, prep_years: s.prepYears, risk: s.risk, note: s.note || '' }),
-    fromRow: (r) => ({ id: r.id, name: r.name, icon: r.icon, enabled: r.enabled, category: r.category, cost: Number(r.cost), downPayment: Number(r.down_payment), loanAmount: Number(r.loan_amount), loanRate: Number(r.loan_rate), loanTenure: r.loan_tenure, monthlyExtra: Number(r.monthly_extra), prepYears: Number(r.prep_years), risk: r.risk, note: r.note }),
+    toRow: (s) => ({ id: s.id, name: s.name.trim(), icon: s.icon || '', enabled: !!s.enabled, category: s.category || 'other', cost: s.cost, down_payment: s.downPayment, loan_amount: s.loanAmount, loan_rate: s.loanRate, loan_tenure: s.loanTenure, monthly_extra: s.monthlyExtra, income_change: s.incomeChange || 0, income_change_months: s.incomeChangeMonths || 0, income_after: s.incomeAfter || 0, prep_years: s.prepYears, risk: s.risk, note: s.note || '' }),
+    fromRow: (r) => ({ id: r.id, name: r.name, icon: r.icon, enabled: r.enabled, category: r.category, cost: Number(r.cost), downPayment: Number(r.down_payment), loanAmount: Number(r.loan_amount), loanRate: Number(r.loan_rate), loanTenure: r.loan_tenure, monthlyExtra: Number(r.monthly_extra), incomeChange: Number(r.income_change || 0), incomeChangeMonths: Number(r.income_change_months || 0), incomeAfter: Number(r.income_after || 0), prepYears: Number(r.prep_years), risk: r.risk, note: r.note }),
   },
   creditCards: {
     table: 'liabilities', kind: 'credit_card',

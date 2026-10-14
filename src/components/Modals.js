@@ -149,8 +149,11 @@ export function GoalModal({modal,close,state,upd}){
 }
 
 export function ScenarioModal({modal,close,state,upd}){
-  const init=modal.data||{id:uid(),name:'',icon:'⚗️',enabled:false,category:'other',cost:10000,downPayment:0,loanAmount:0,loanRate:0,loanTenure:0,monthlyExtra:0,prepYears:1,risk:'medium',note:''};
+  const init=modal.data||{id:uid(),name:'',icon:'⚗️',enabled:false,category:'other',cost:10000,downPayment:0,loanAmount:0,loanRate:0,loanTenure:0,monthlyExtra:0,incomeChange:0,incomeChangeMonths:0,incomeAfter:0,prepYears:1,risk:'medium',note:''};
   const[d,setD]=useState(init);
+  const giveUp=Math.max(0,-(d.incomeChange||0));
+  const earns=(d.incomeAfter||0)+giveUp;
+  const setIncome=(g,m,e)=>setD({...d,incomeChange:-g,incomeChangeMonths:m,incomeAfter:e-g});
   const save=()=>{
     if(!d.name.trim())return;
     const scenarios=modal.data?state.scenarios.map(s=>s.id===d.id?d:s):[...state.scenarios,d];
@@ -177,7 +180,16 @@ export function ScenarioModal({modal,close,state,upd}){
         ),
         React.createElement('div',{className:'grid2'},
           React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Loan Tenure (months)'),React.createElement(NumInput,{value:d.loanTenure,min:0,max:480,onChange:v=>setD({...d,loanTenure:v}),style:{width:'100%'}})),
-          React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Extra Monthly Cost'),React.createElement(NumInput,{value:d.monthlyExtra,min:0,max:50000,onChange:v=>setD({...d,monthlyExtra:v}),prefix:'$',style:{width:'100%'}}))
+          React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Running costs / extra cost (per month)'),React.createElement(NumInput,{value:d.monthlyExtra,min:0,max:50000,onChange:v=>setD({...d,monthlyExtra:v}),prefix:'$',style:{width:'100%'}}))
+        ),
+        React.createElement('div',{className:'stack stack-sm',style:{padding:12,border:'1px solid var(--border)',borderRadius:8,background:'var(--bg3)'}},
+          React.createElement('div',{style:{fontWeight:600,fontSize:13}},'Does this change your income? (optional)'),
+          React.createElement('div',{className:'note'},'For example starting a business: you may stop earning your salary for a while, then earn something from the business. Leave at 0 if your income stays the same.'),
+          React.createElement('div',{className:'grid2'},
+            React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Income you give up (per month)'),React.createElement(NumInput,{value:giveUp,min:0,max:1e7,onChange:v=>setIncome(v,d.incomeChangeMonths||0,earns),prefix:'$',style:{width:'100%'}})),
+            React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Months until it earns'),React.createElement(NumInput,{value:d.incomeChangeMonths||0,min:0,max:600,onChange:v=>setIncome(giveUp,v,earns),style:{width:'100%'}}))
+          ),
+          React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Income it earns once running (per month)'),React.createElement(NumInput,{value:earns,min:0,max:1e7,onChange:v=>setIncome(giveUp,d.incomeChangeMonths||0,v),prefix:'$',style:{width:'100%'}}))
         ),
         React.createElement('div',{className:'grid2'},
           React.createElement('div',{className:'input-group'},React.createElement('label',{className:'input-label'},'Prep Years Needed'),React.createElement(NumInput,{value:d.prepYears,min:0,max:30,onChange:v=>setD({...d,prepYears:v}),style:{width:'100%'}})),
