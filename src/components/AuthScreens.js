@@ -13,7 +13,7 @@ export function friendlyAuth(e) {
   if (/already (been )?registered|already exists/i.test(m)) return 'An account with this email already exists. Try signing in.';
   if (/signups? (are |is )?(not allowed|disabled)/i.test(m)) return 'New sign-ups are turned off for this app.';
   if (/rate limit|too many|security purposes/i.test(m)) return 'Too many attempts. Wait a few minutes and try again.';
-  if (/failed to fetch|network/i.test(m)) return 'Cannot reach the server. Check your internet connection.';
+  if (/failed to fetch|network/i.test(m)) return 'Cannot reach the server. Check your internet connection. If it is fine, your Supabase project may be paused: open the Supabase dashboard and press Resume project.';
   if (/same password|different from the old/i.test(m)) return 'Choose a password you have not used on this account before.';
   return m || 'Something went wrong. Please try again.';
 }
