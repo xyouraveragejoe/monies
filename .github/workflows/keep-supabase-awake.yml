@@ -1,0 +1,41 @@
+# Keeps the free Supabase project from being paused for inactivity.
+# Once a day it asks the database to run a harmless function (public.ping, see supabase/migrations/003_ping.sql).
+#
+# One-time setup (GitHub repo > Settings > Secrets and variables > Actions > Variables tab > New repository variable):
+#   SUPABASE_URL              e.g. https://abcdxyz.supabase.co
+#   SUPABASE_PUBLISHABLE_KEY  the same public (publishable) key the website uses. Never the secret/service_role key.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 3 * * *'   # every day at 03:17 UTC
+  workflow_dispatch:        # lets you press "Run workflow" to test it
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the database
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::error::Add the repository variables SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY first (see the comment at the top of this file)."
+            exit 1
+          fi
+          code=$(curl --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
+            --output response.txt --write-out '%{http_code}' \
+            --request POST "${SUPABASE_URL%/}/rest/v1/rpc/ping" \
+            --header "apikey: ${SUPABASE_KEY}" \
+            --header "Content-Type: application/json" \
+            --data '{}')
+          echo "HTTP status: $code"
+          cat response.txt; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Ping failed (status $code). If it is 404 run supabase/migrations/003_ping.sql; if the project is paused, resume it in the Supabase dashboard."
+            exit 1
+          fi

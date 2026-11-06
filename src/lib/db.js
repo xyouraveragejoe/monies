@@ -16,7 +16,7 @@ export function friendlyMessage(e) {
   if (e instanceof DataError) return e.message;
   const msg = String(e.message || e);
   const code = e.code || '';
-  if (/failed to fetch|networkerror|load failed|network request/i.test(msg)) return 'Cannot reach the server. Check your internet connection and try again.';
+  if (/failed to fetch|networkerror|load failed|network request/i.test(msg)) return 'Cannot reach the server. Check your internet connection. If it is fine, your Supabase project may be paused: open the Supabase dashboard and press Resume project.';
   if (/jwt|token|not authenticated|session/i.test(msg) || code === 'PGRST301' || code === 'PGRST303') return 'Your login has expired. Please sign in again.';
   if (code === '42501' || /row-level security|permission denied/i.test(msg)) return 'The database refused this change (permission). Try signing out and back in.';
   if (code === '23514') return 'One of the values is not allowed (too large, negative, or blank).';
