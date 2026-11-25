@@ -1,7 +1,8 @@
 # Keeps the free Supabase project from being paused for inactivity.
 # Once a day it asks the database to run a harmless function (public.ping, see supabase/migrations/003_ping.sql).
 #
-# One-time setup (GitHub repo > Settings > Secrets and variables > Actions > Variables tab > New repository variable):
+# One-time setup (GitHub repo > Settings > Secrets and variables > Actions). Add both names as a
+# repository VARIABLE (Variables tab) or as a repository SECRET (Secrets tab); either works:
 #   SUPABASE_URL              e.g. https://abcdxyz.supabase.co
 #   SUPABASE_PUBLISHABLE_KEY  the same public (publishable) key the website uses. Never the secret/service_role key.
 name: Keep Supabase awake
@@ -20,11 +21,11 @@ jobs:
     steps:
       - name: Ping the database
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "::error::Add the repository variables SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY first (see the comment at the top of this file)."
+            echo "::error::SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY is empty. Add both under Settings > Secrets and variables > Actions, spelled exactly like that, as repository-level (not Environment-level) entries."
             exit 1
           fi
           code=$(curl --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
