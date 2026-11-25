@@ -19,12 +19,12 @@ export function PageAI({state,upd,derived}){
   const buildContext=()=>`
 User Financial Profile:
 - Age: ${state.profile.age}, Country: ${state.profile.country}
-- Monthly Income: ${CURRENCY.code} ${derived.totalIncome.toFixed(0)}
-- Monthly Expenses: ${CURRENCY.code} ${derived.totalExpenses.toFixed(0)}
-- Monthly Surplus: ${CURRENCY.code} ${derived.monthlySurplus.toFixed(0)}
-- Net Worth: ${CURRENCY.code} ${derived.netWorth.toFixed(0)}
-- Total Assets: ${CURRENCY.code} ${derived.totalAssets.toFixed(0)}
-- Total Debt: ${CURRENCY.code} ${derived.totalDebt.toFixed(0)}
+- Monthly Income: ${CURRENCY.code} ${Math.round(derived.totalIncome).toLocaleString('en-US')}
+- Monthly Expenses: ${CURRENCY.code} ${Math.round(derived.totalExpenses).toLocaleString('en-US')}
+- Monthly Surplus: ${CURRENCY.code} ${Math.round(derived.monthlySurplus).toLocaleString('en-US')}
+- Net Worth: ${CURRENCY.code} ${Math.round(derived.netWorth).toLocaleString('en-US')}
+- Total Assets: ${CURRENCY.code} ${Math.round(derived.totalAssets).toLocaleString('en-US')}
+- Total Debt: ${CURRENCY.code} ${Math.round(derived.totalDebt).toLocaleString('en-US')}
 - Savings Rate: ${derived.savingsRate.toFixed(1)}%
 - Health Score: ${derived.healthScore}/100
 - Target Retire Age: ${state.profile.retireAge}

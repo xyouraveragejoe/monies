@@ -66,7 +66,7 @@ export function PagePredictor({state,upd,derived}){
         React.createElement(LineChart,{data:chartData,margin:{top:5,right:5,left:5,bottom:5}},
           React.createElement(CartesianGrid,{strokeDasharray:'3 3',stroke:'var(--border2)'}),
           React.createElement(XAxis,{dataKey:'year',tick:{fontSize:10,fill:'var(--fg3)'}}),
-          React.createElement(YAxis,{tick:{fontSize:10,fill:'var(--fg3)'},tickFormatter:v=>fmtK(v)}),
+          React.createElement(YAxis,{width:84,tick:{fontSize:10,fill:'var(--fg3)'},tickFormatter:v=>fmtK(v)}),
           React.createElement(Tooltip,{formatter:(v,n)=>[fmtK(v),n],contentStyle:{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}),
           React.createElement(Legend,{wrapperStyle:{fontSize:12}}),
           React.createElement(Line,{type:'monotone',dataKey:'conservative',name:'Conservative',stroke:'#8a917f',strokeWidth:2,dot:false}),

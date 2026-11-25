@@ -261,3 +261,6 @@ img,svg,canvas{max-width:100%}
   .page-content{padding:12px}
   .hero-big{font-size:32px}
 }
+
+/* Full comma figures are longer than the old "400K" shorthand, so let big numbers wrap instead of spilling out */
+.kpi-value,.hero-big,.stat-value{overflow-wrap:anywhere}

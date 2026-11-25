@@ -37,7 +37,8 @@ export const fmtIn=(n,code)=>{const v=Math.round(Math.abs(n||0));return (n<0&&v!
 
 export const fmt=(n)=>fmtIn(n,CURRENCY.code);
 
-export const fmtK=(n)=>{const a=Math.abs(n||0);const s=n<0?'-':'';const sym=CURRENCY.sym;return a>=1e9?`${s}${withSym(sym,(a/1e9).toFixed(1)+'B')}`:a>=1e6?`${s}${withSym(sym,(a/1e6).toFixed(1)+'M')}`:a>=1e3?`${s}${withSym(sym,(a/1e3).toFixed(0)+'K')}`:fmt(n)};
+// Full figure with comma thousands separators (kept under the old name so every screen uses it)
+export const fmtK=(n)=>fmt(n);
 
 export const fmtKIn=(n,code)=>{const prev={...CURRENCY};CURRENCY.code=code;CURRENCY.sym=symFor(code);const r=fmtK(n);CURRENCY.code=prev.code;CURRENCY.sym=prev.sym;return r;};
 

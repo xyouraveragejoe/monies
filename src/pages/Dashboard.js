@@ -73,7 +73,7 @@ export function PageDashboard({state,derived,setPage,upd}){
             ),
             React.createElement(CartesianGrid,{strokeDasharray:'3 3',stroke:'var(--border2)'}),
             React.createElement(XAxis,{dataKey:'year',tick:{fontSize:10,fill:'var(--fg3)'},tickLine:false}),
-            React.createElement(YAxis,{tick:{fontSize:10,fill:'var(--fg3)'},tickLine:false,tickFormatter:v=>fmtK(v)}),
+            React.createElement(YAxis,{width:84,tick:{fontSize:10,fill:'var(--fg3)'},tickLine:false,tickFormatter:v=>fmtK(v)}),
             React.createElement(Tooltip,{formatter:(v)=>[fmtK(v),'Net Worth'],contentStyle:{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}),
             React.createElement(Area,{type:'monotone',dataKey:'value',stroke:'#4a7c52',fill:'url(#nwGrad)',strokeWidth:2})
           )

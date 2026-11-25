@@ -13,17 +13,18 @@ export function NumInput({value,onChange,min=0,max=999999999,step=1,style,placeh
   useEffect(()=>{if(!focused)setRaw(String(value??0));},[value,focused]);
   const commit=()=>{
     setFocused(false);
-    const p=parseFloat(raw);
+    const p=parseFloat(String(raw).replace(/,/g,''));
     if(isNaN(p)){setRaw(String(value??0));return;}
     const clamped=clamp(p,min,max);
     const final=step<1?parseFloat(clamped.toFixed(dec)):Math.round(clamped);
     setRaw(String(final));
     if(final!==value)onChange(final);
   };
+  const shown=(()=>{const n=parseFloat(String(raw).replace(/,/g,''));return Number.isFinite(n)?n.toLocaleString('en-US',{maximumFractionDigits:dec}):raw;})();
   return React.createElement('div',{style:{position:'relative',display:'flex',alignItems:'center',...style}},
     prefix&&React.createElement('span',{style:{position:'absolute',left:10,color:'var(--fg3)',fontSize:13,pointerEvents:'none'}},prefix),
     React.createElement('input',{
-      type:'text',inputMode:'decimal',value:raw,placeholder,disabled,
+      type:'text',inputMode:'decimal',value:focused?raw:shown,placeholder,disabled,
       style:{width:'100%',padding:prefix?`8px 12px 8px ${14+String(prefix).length*9}px`:'8px 12px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:7,color:'var(--fg)',fontSize:13,fontFamily:'inherit',outline:'none',transition:'border 0.15s',opacity:disabled?0.5:1},
       onFocus:()=>{setFocused(true);setRaw(String(value??0));},
       onChange:e=>{if(/^-?\d*\.?\d*$/.test(e.target.value)||e.target.value==='-')setRaw(e.target.value);},

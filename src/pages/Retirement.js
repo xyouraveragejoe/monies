@@ -82,7 +82,7 @@ export function PageRetirement({state,upd,derived}){
           ),
           React.createElement(CartesianGrid,{strokeDasharray:'3 3',stroke:'var(--border2)'}),
           React.createElement(XAxis,{dataKey:'year',tick:{fontSize:10,fill:'var(--fg3)'}}),
-          React.createElement(YAxis,{tick:{fontSize:10,fill:'var(--fg3)'},tickFormatter:v=>fmtK(v)}),
+          React.createElement(YAxis,{width:84,tick:{fontSize:10,fill:'var(--fg3)'},tickFormatter:v=>fmtK(v)}),
           React.createElement(Tooltip,{formatter:(v,n)=>[fmtK(v),n],contentStyle:{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}),
           React.createElement(Legend,{wrapperStyle:{fontSize:12}}),
           React.createElement(Area,{type:'monotone',dataKey:'portfolio',name:'Your Portfolio',stroke:'#4a7c52',fill:'url(#retGrad)',strokeWidth:2}),
