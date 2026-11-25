@@ -24,10 +24,17 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          # Copy-and-paste often adds a hidden newline or space (or quote marks); strip them.
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]"'"'")
+          SUPABASE_KEY=$(printf '%s' "$SUPABASE_KEY" | tr -d '[:space:]"'"'")
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
             echo "::error::SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY is empty. Add both under Settings > Secrets and variables > Actions, spelled exactly like that, as repository-level (not Environment-level) entries."
             exit 1
           fi
+          case "$SUPABASE_URL" in
+            https://*) ;;
+            *) echo "::error::SUPABASE_URL must start with https:// (it should look like https://abcdxyz.supabase.co)."; exit 1 ;;
+          esac
           code=$(curl --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
             --output response.txt --write-out '%{http_code}' \
             --request POST "${SUPABASE_URL%/}/rest/v1/rpc/ping" \
